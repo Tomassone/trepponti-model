@@ -1,15 +1,15 @@
 // ============================================================
-// back_stairs.scad
+// stairs.scad
 // Importable module: staircase block with a flat top landing
 // and optional smooth sloped side walls running along the whole
 // staircase, from the landing to the last step.
 //
 // Usage:
-//   use <back_stairs.scad>
-//   back_stairs();                                    // stairs + both side walls
-//   back_stairs(side_walls = false);                  // stairs only
-//   back_stairs(rail_height = 10, rail_thickness = 4);
-//   back_stairs(rail_sides = [1]);                    // wall on the +Y side only
+//   use <stairs.scad>
+//   stairs();                                    // stairs + both side walls
+//   stairs(side_walls = false);                  // stairs only
+//   stairs(rail_height = 10, rail_thickness = 4);
+//   stairs(rail_sides = [1]);                    // wall on the +Y side only
 // ============================================================
 
 // ------------------------------------------------------------
@@ -45,16 +45,16 @@ function stairs_profile(total_height, top_len, base_len, num_steps) =
     );
 
 // ------------------------------------------------------------
-// back_stairs_wall_profile()
+// stairs_wall_profile()
 // 2D profile of a side wall with a smooth sloped top. The slope
 // runs parallel to the line joining the step edges, raised by
 // rail_height, and ends exactly at the end of the staircase.
 //
-//   total_height, top_len, base_len : same as back_stairs()
+//   total_height, top_len, base_len : same as stairs()
 //   rail_height  : height of the wall above the step edges
 //   landing_rail : true to continue the wall over the top landing
 // ------------------------------------------------------------
-module back_stairs_wall_profile(
+module stairs_wall_profile(
     total_height = 30,
     top_len      = 30,
     base_len     = 70,
@@ -73,7 +73,7 @@ module back_stairs_wall_profile(
 }
 
 // ------------------------------------------------------------
-// back_stairs()
+// stairs()
 // The staircase solid, extruded and rotated upright (XZ plane),
 // with its width centered on the Y axis. Optionally adds smooth
 // side walls flush with the outer edges (the total width stays
@@ -90,7 +90,7 @@ module back_stairs_wall_profile(
 //   rail_sides     : Y sides with a wall: [-1, 1] = both, [1] = +Y, [-1] = -Y
 //   landing_rail   : true to continue the walls over the top landing
 // ------------------------------------------------------------
-module back_stairs(
+module stairs(
     total_height   = 30,
     top_len        = 30,
     base_len       = 70,
@@ -120,7 +120,7 @@ module back_stairs(
                 // after the rotation, -Z becomes +Y, hence the minus sign
                 translate([0, 0, -s * (width / 2 - rail_thickness / 2)])
                     linear_extrude(height = rail_thickness, center = true)
-                        back_stairs_wall_profile(
+                        stairs_wall_profile(
                             total_height = total_height,
                             top_len      = top_len,
                             base_len     = base_len,
@@ -130,4 +130,4 @@ module back_stairs(
 }
 
 // Quick preview when opening this file directly (comment out when importing):
-// back_stairs();
+stairs();
