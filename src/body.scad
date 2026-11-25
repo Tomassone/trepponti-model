@@ -34,6 +34,7 @@
 //   cut_r      : radius of each spherical cut
 //   cut_centers: centers of the spherical cuts, in the final centered
 //                coordinates (the body is centered on the X and Y axes)
+//   cut_z_scale: vertical stretch of the cuts (1 = spherical)
 //   $fa, $fs   : mesh quality for the spheres
 // ------------------------------------------------------------
 module body(
@@ -45,6 +46,7 @@ module body(
     refine      = true,
     cut_r       = 11,
     cut_centers = [[0, -10, 0], [10, 2, 0], [-10, 2, 0]],
+    cut_z_scale = 1,
     $fa         = 1,
     $fs         = 0.4
 ) {
@@ -71,10 +73,26 @@ module body(
 
         // Spherical cuts (skipped when refine = false)
         if (refine)
-            for (c = cut_centers)
-                translate(c)
-                    sphere(r = cut_r);
+            body_cuts(cut_r, cut_centers, cut_z_scale, $fa = $fa, $fs = $fs);
     }
+}
+
+// ------------------------------------------------------------
+// body_cuts()
+// The arch cuts on their own, so that other parts overlapping the
+// body (e.g. stairs) can subtract them and keep the vault clear.
+// ------------------------------------------------------------
+module body_cuts(
+    cut_r       = 11,
+    cut_centers = [[0, -10, 0], [10, 2, 0], [-10, 2, 0]],
+    cut_z_scale = 1,
+    $fa         = 1,
+    $fs         = 0.4
+) {
+    for (c = cut_centers)
+        translate(c)
+            scale([1, 1, cut_z_scale])
+                sphere(r = cut_r);
 }
 
 // Quick preview when opening this file directly (comment out when importing):

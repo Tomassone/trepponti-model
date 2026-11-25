@@ -63,13 +63,14 @@ module stairs_wall_profile(
 ) {
     x_start = landing_rail ? 0 : top_len;    // where the wall begins
 
-    polygon([
-        [x_start,  0],                           // bottom-left
-        [x_start,  total_height],                // top-left
-        [top_len,  total_height],                // end of the flat top (landing)
-        [base_len, rail_height],                 // end of the slope, over the last step
-        [base_len, 0]                            // bottom-right
-    ]);
+    top_z = total_height + rail_height;          // top of the wall on the landing
+
+    polygon(concat(
+        [[x_start, 0], [x_start, top_z]],        // bottom-left, top-left
+        landing_rail ? [[top_len, top_z]] : [],  // end of the flat top (landing)
+        [[base_len, rail_height],                // end of the slope, over the last step
+         [base_len, 0]]                          // bottom-right
+    ));
 }
 
 // ------------------------------------------------------------
@@ -130,4 +131,4 @@ module stairs(
 }
 
 // Quick preview when opening this file directly (comment out when importing):
-stairs();
+// stairs();
