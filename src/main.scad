@@ -1,6 +1,7 @@
 use <body.scad>
 use <tower.scad>
 use <stairs.scad>
+use <pillar.scad>
 
 // --- Print scale ---
 model_scale = 200;                          // 1:200
@@ -33,9 +34,20 @@ parapet_t      = 0.30;
 tower_side     = 4.0;                       // = back_width, the tower is as wide as its stair
 tower_total    = 8.3;                       // above the door sill, roof included
 tower_roof     = 0.85;
-main_arch      = [7.6, 3.9, 4.4];           // opening width, crown height, vault radius (A-B: semicircle)
-side_arch      = [5.0, 3.4, 3.6];           // C-D and D-E
-end_arch       = [3.6, 3.0, 2.6];           // B-C and E-A (the lateral sides)
+// All the arches are semicircular (opening width, crown height = width / 2, vault radius):
+main_arch      = [7.6, 3.8, 4.4];           // A-B, over the main canal
+side_arch      = [4.8, 2.4, 3.2];           // C-D and D-E, on both sides of the central stair
+end_arch       = [4.0, 2.0, 2.5];           // B-C and E-A, the lateral sides (last reference photo)
+
+// Central stair (at the apex D) and the six stone pillars at the heads of the three front stairs
+apex_width     = front_width;               // same width as the other front stairs (the pillar pairs are evenly spaced)
+apex_run       = front_run;
+pillar_w       = 0.65;                      // shaft
+pillar_shaft   = 1.5;                       // shaft height above the platform
+pillar_cap_w   = 0.85;
+pillar_cap_h   = 0.2;
+pillar_dome_h  = 0.5;
+pillar_ball_d  = 0.2;                       // total ~2.4 m: tops out ~2 m above the wall, as in the photos
 
 platform_top = deck_height + platform_raise;
 
@@ -74,6 +86,12 @@ front_mis     = abs(front_heading - (cd_angle - 90));     // top step vs. the C-
 back_landing  = tower_side;                               // the tower stands on it
 front_landing = front_width * tan(front_mis) + 0.3;
 
+// Central stair: on the axis, going north from the apex D. The apex pokes out between the sides of the
+// top step, so the landing reaches back to cover the gap.
+apex_top     = D;
+apex_heading = 90;
+apex_landing = apex_width / 2 * tan(180 - cd_angle) + 0.3;
+
 // Tower, centered on the back flight, front face on the top step
 tower_pos = back_top - tower_side / 2 * dir(back_heading);
 
@@ -85,7 +103,9 @@ for (a = [main_arch, side_arch, end_arch])
 
 // C-D: the free part of the side, next to the front stair
 front_foot = front_width / cos(front_mis);
-cd_mid     = C + (front_foot + upper_side) / 2 * dir(cd_angle);
+apex_foot  = apex_width / 2 / abs(cos(cd_angle));              // part of C-D taken by the central stair
+assert(side_arch[0] < upper_side - front_foot - apex_foot, "side_arch is too wide for the free part of C-D");
+cd_mid     = C + (front_foot + upper_side - apex_foot) / 2 * dir(cd_angle);
 cd_center  = cd_mid + arch_inset(side_arch) * dir(cd_angle + 90);
 
 // B-C: the free part of the side, past the tower
@@ -118,17 +138,25 @@ body_rim(d1 = mm(d1), d2 = mm(d2), bh1 = mm(bh1), bh2 = mm(bh2),
         flight_gap(front_top, front_heading, front_landing, front_width);
         tower_gap();
     }
+    flight_gap(apex_top, apex_heading, apex_landing, apex_width);
 }
 
 difference() {
-    mirrored() {
-        flight(back_top,  back_heading,  back_landing,  back_run,  back_width,  back_rise,  back_steps);
-        flight(front_top, front_heading, front_landing, front_run, front_width, front_rise, front_steps);
+    union() {
+        mirrored() {
+            flight(back_top,  back_heading,  back_landing,  back_run,  back_width,  back_rise,  back_steps);
+            flight(front_top, front_heading, front_landing, front_run, front_width, front_rise, front_steps);
+        }
+        flight(apex_top, apex_heading, apex_landing, apex_run, apex_width, front_rise, front_steps);
     }
     body_cuts(arch_r, arch_centers, arch_z, $fa = fa, $fs = fs);    // keep the vault clear
 }
 
 mirrored() back_tower();
+
+// Pillars: a pair at the head of each front stair, on the outer edges
+mirrored() stair_pillars(front_top, front_heading, front_width);
+stair_pillars(apex_top, apex_heading, apex_width);
 
 // A part plus its mirror twin across the YZ plane
 module mirrored() {
@@ -168,6 +196,21 @@ module tower_gap() {
                 cube([s, s, mm(20)]);
 }
 
+// A pair of pillars flanking the head of a stair, standing on the platform
+module stair_pillars(top, heading, width) {
+    for (side = [-1, 1]) {
+        p = top + side * (width / 2 - pillar_w / 2) * dir(heading + 90) - 0.15 * dir(heading);
+        translate([mm(p[0]), mm(p[1]), mm(platform_top) - 0.05])
+            rotate([0, 0, heading])
+                pillar(size     = mm(pillar_w),
+                       shaft_h  = mm(pillar_shaft),
+                       cap_size = mm(pillar_cap_w),
+                       cap_h    = mm(pillar_cap_h),
+                       dome_h   = mm(pillar_dome_h),
+                       ball_d   = mm(pillar_ball_d));
+    }
+}
+
 // Tower at the top of the back stair, passage aligned with the flight
 module back_tower() {
     side = mm(tower_side);
@@ -193,3 +236,4 @@ echo(AB = 2 * B[0], BC = len2(B, C), CD = len2(C, D), EC = 2 * C[0], depth = D[1
 echo(back_slope  = atan(back_rise / back_run),   back_steps  = back_steps);
 echo(front_slope = atan(front_rise / front_run), front_steps = front_steps);
 echo(tower_reach_on_BC = tower_reach, free_BC = bc_len - tower_reach);
+echo(free_CD = upper_side - front_foot - apex_foot, apex_landing = apex_landing);
