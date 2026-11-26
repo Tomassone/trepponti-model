@@ -95,5 +95,39 @@ module body_cuts(
                 sphere(r = is_list(cut_r) ? cut_r[i] : cut_r);
 }
 
+// ------------------------------------------------------------
+// body_rim()
+// The raised border running along the edge of the body's top face
+// (same idea as the side walls of the stairs: rim_h above the top,
+// rim_t thick). Same profile / centering as body().
+//
+//   z      : height of the top face of the body (the rim sits on it)
+//   rim_h  : height of the border above the top face
+//   rim_t  : thickness of the border
+//   children() : optional solids subtracted from the border, used to
+//                leave openings where stairs and towers join the body
+// ------------------------------------------------------------
+module body_rim(
+    d1    = 24,
+    d2    = 4,
+    bh1   = 20,
+    bh2   = 8,
+    z     = 16,
+    rim_h = 1,
+    rim_t = 1
+) {
+    points = [[d2, 0], [0, bh1], [d1, bh1 + bh2], [2 * d1, bh1], [2 * d1 - d2, 0]];
+
+    difference() {
+        translate([-d1, -(bh1 + bh2) / 2, z - 0.05])      // 0.05 overlap into the body
+            linear_extrude(height = rim_h + 0.05)
+                difference() {
+                    polygon(points);
+                    offset(delta = -rim_t) polygon(points);
+                }
+        children();
+    }
+}
+
 // Quick preview when opening this file directly (comment out when importing):
 // body();

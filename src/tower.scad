@@ -43,6 +43,8 @@ module cap_pyramid(cap_h, cap_r, cap_sides, cap_rot) {
 //                   length is cap_r * sqrt(2), about 5.94 by default)
 //   cap_sides     : number of sides of the cap base
 //   cap_rot       : rotation of the cap around Z (degrees)
+//   cornice_h     : height of a slightly wider band at the top of the body
+//   cornice_out   : how far the band sticks out on each side
 //   underside_cap : true to add the downward pyramid under the cap
 //                   (it only adds a small chamfer below the overhang)
 //   $fa, $fs      : mesh quality for the round hole
@@ -58,6 +60,8 @@ module tower(
     cap_r         = 4.2,
     cap_sides     = 4,
     cap_rot       = 45,
+    cornice_h     = 0,
+    cornice_out   = 0,
     underside_cap = true,
     $fa           = 1,
     $fs           = 0.4
@@ -84,6 +88,11 @@ module tower(
             rotate([90, 0, 0])
                 cylinder(d = hole_d, h = size + 2 * eps, center = true);
     }
+
+    // cornice: slightly wider band just under the roof
+    if (cornice_h > 0)
+        translate([0, 0, height - cornice_h / 2])
+            cube([size + 2 * cornice_out, size + 2 * cornice_out, cornice_h], center = true);
 
     // cap: upward pyramid (and optional downward one) centered on the top face
     translate([0, 0, height]) {
