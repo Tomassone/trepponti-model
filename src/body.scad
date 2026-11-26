@@ -31,10 +31,10 @@
 //   bh2        : extra height of the apex (p2) above the side corners
 //   h          : height of the extrusion (Z)
 //   refine     : true to subtract the spherical cuts, false for the raw body
-//   cut_r      : radius of each spherical cut
+//   cut_r      : radius of the spherical cuts (one value, or one per cut)
 //   cut_centers: centers of the spherical cuts, in the final centered
 //                coordinates (the body is centered on the X and Y axes)
-//   cut_z_scale: vertical stretch of the cuts (1 = spherical)
+//   cut_z_scale: vertical stretch of the cuts, 1 = spherical (one value, or one per cut)
 //   $fa, $fs   : mesh quality for the spheres
 // ------------------------------------------------------------
 module body(
@@ -89,10 +89,10 @@ module body_cuts(
     $fa         = 1,
     $fs         = 0.4
 ) {
-    for (c = cut_centers)
-        translate(c)
-            scale([1, 1, cut_z_scale])
-                sphere(r = cut_r);
+    for (i = [0 : len(cut_centers) - 1])
+        translate(cut_centers[i])
+            scale([1, 1, is_list(cut_z_scale) ? cut_z_scale[i] : cut_z_scale])
+                sphere(r = is_list(cut_r) ? cut_r[i] : cut_r);
 }
 
 // Quick preview when opening this file directly (comment out when importing):
