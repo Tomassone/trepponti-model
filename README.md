@@ -4,10 +4,6 @@ A parametric 3D model of **Trepponti Bridge (Ponte dei Trepponti)**, a historic 
 
 The model recreates the bridge's distinctive five-sided structure, arches, staircases, parapets, and central tower, with approximate dimensions derived from geographical measurements and visual references.
 
-## Preview
-
-*Add rendered images of the model here.*
-
 ## Features
 
 - Parametric 3D model written in OpenSCAD.
@@ -60,9 +56,3 @@ The modelling process made use of publicly available visual references:
 The reference images and geographical imagery belong to their respective owners and are acknowledged as sources of reference material. They are not included in this repository unless explicitly stated.
 
 This project is an independently created 3D reconstruction for educational, personal, and modelling purposes. It is not an official model of Trepponti Bridge and is not affiliated with Google or the Municipality of Comacchio.
-
-## License
-
-*License to be determined.*
-
-If you choose to distribute the source code, consider adding a license such as MIT. Note that a software license for your code does not automatically grant rights to third-party reference photographs or geographical imagery used during the modelling process.
