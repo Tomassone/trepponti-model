@@ -25,9 +25,8 @@ front_width = 2.9;
 
 // --- Not measured: read off the reference photos (real metres / degrees) ---
 corner_width   = 18.62;                     // E-C, sets the pentagon shape (below 2 * upper_side)
-back_splay     = 23;                        // back stair: outward angle from the main axis (aerial photo ~19, front photo ~27)
-front_fan      = 10;                        // front stair: outward angle from the main axis (they are almost parallel)
-                                            //   was 24 deg off the C-D normal, i.e. ~42 deg in plan = the "45 degrees" problem
+back_splay     = 20;                        // back stair: outward angle from the main axis (survey plan: 20)
+front_fan      = 15;                        // front stairs C and E: outward angle from the main axis (survey plan: 13-15)
 deck_height    = 4.0;                       // top of the back stairs = tower door sill
 platform_raise = 1.9;                       // platform top above deck_height (front photo: wall top is ~2.3 m above the
                                             //   door sill, parapet included). 0 = flat deck like before
@@ -44,8 +43,11 @@ end_arch       = [4.0, 2.0, 2.5];           // B-C and E-A, the lateral sides (l
 
 // Central stair (at the apex D) and the six stone pillars at the heads of the three front stairs
 apex_width     = front_width;               // head of the central stair = same as the other front stairs (pillar pairs evenly spaced)
-apex_width_bot = 6.5;                       // foot of the central stair: in the photos it widens a lot going down, unlike the others
-apex_run       = front_run;
+apex_flare     = 12;                        // the two edges of the central stair each open by this angle (survey plan: 10-15)
+apex_pad       = 1.8;                       // flat pad at its head, between the pillars, before the first step
+apex_run       = 13.8;                      // steps of the two flights + the extended step
+apex_land_len  = 2.0;                       // the extended step (a long tread / landing) in the middle of the stair
+apex_width_bot = apex_width + 2 * apex_run * tan(apex_flare);
 pillar_w       = 0.65;                      // shaft
 pillar_shaft   = 1.5;                       // shaft height above the platform
 pillar_cap_w   = 0.85;
@@ -54,16 +56,16 @@ pillar_dome_h  = 0.5;
 pillar_ball_d  = 0.2;                       // total ~2.4 m: tops out ~2 m above the wall, as in the photos
 
 // Stone relief in the middle of the platform: 7 sides, stepped (aerial and drone photos)
-relief_w       = 8.2;                       // bounding box of the lowest tier
-relief_d       = 5.8;
-relief_y       = 6.6;                       // its center, measured from the A-B side (flat side towards D, as in the drone photo)
+relief_w       = 8.8;                       // bounding box of the lowest tier (survey plan: ~9 x 8.6, almost a regular heptagon)
+relief_d       = 8.6;
+relief_gap     = 1.9;                       // from the apex D to its flat side; the opposite vertex ends up near the A-B wall
 relief_steps   = 3;
 relief_riser   = 0.2;
 relief_tread   = 0.4;
 
 // Passage inside each tower: from the door (deck_height) it climbs to the platform
 exit_riser     = 0.17;                      // target step height (adjusted to fit platform_raise exactly)
-exit_tread     = 0.26;
+exit_tread     = 0.18;
 exit_width     = 1.1;                       // = the tower slot
 
 // Pedestal (separate file, pedestal.scad). These are model millimetres, not real metres.
@@ -87,6 +89,8 @@ y0 = -(bh1 + bh2) / 2;
 B  = [long_side / 2, y0];
 C  = [d1, y0 + bh1];
 D  = [0, y0 + bh1 + bh2];
+
+relief_cy = D[1] - relief_gap - relief_d / 2;       // center of the relief
 
 // --- Stair directions ---
 function dir(a) = [cos(a), sin(a)];
@@ -163,7 +167,7 @@ module model() {
         union() {
             body(d1 = mm(d1), d2 = mm(d2), bh1 = mm(bh1), bh2 = mm(bh2), h = mm(platform_top),
                  cut_r = arch_r, cut_centers = arch_centers, cut_z_scale = arch_z, $fa = fa, $fs = fs);
-            translate([0, mm(y0 + relief_y), mm(platform_top) - 0.05])
+            translate([0, mm(relief_cy), mm(platform_top) - 0.05])
                 mirror([0, 1, 0])               // flat side towards D, the vertex towards A-B
                 relief(width = mm(relief_w), depth = mm(relief_d), steps = relief_steps,
                        riser = mm(relief_riser), tread = mm(relief_tread));
@@ -187,7 +191,8 @@ module model() {
                 flight(back_top,  back_heading,  back_landing,  back_run,  back_width,  back_rise,  back_steps);
                 flight(front_top, front_heading, front_landing, front_run, front_width, front_rise, front_steps);
             }
-            fan_flight(apex_top, apex_heading, apex_landing, apex_run, apex_width, apex_width_bot, front_rise, front_steps);
+            fan_flight(apex_top, apex_heading, apex_landing, apex_pad, apex_run, apex_width, apex_width_bot,
+                       front_rise, front_steps, round(front_steps / 2), apex_land_len);
         }
         body_cuts(arch_r, arch_centers, arch_z, $fa = fa, $fs = fs);    // keep the vault clear
     }
@@ -211,7 +216,7 @@ right_pts = concat(flight_pts(back_top,  back_heading,  back_landing,  back_run,
 footprint_points = concat(
     [for (p = right_pts) mm2(p)],
     [for (p = right_pts) mm2([-p[0], p[1]])],
-    [for (p = flight_pts(apex_top, apex_heading, apex_landing, apex_run, apex_width, apex_width_bot)) mm2(p)],
+    [for (p = flight_pts(apex_top, apex_heading, apex_landing, apex_pad + apex_run, apex_width, apex_width_bot)) mm2(p)],
     [mm2(D)]);
 
 // A part plus its mirror twin across the YZ plane
@@ -236,16 +241,18 @@ module flight(top, heading, landing, run, width, rise, steps) {
 }
 
 // Same as flight(), but widening from w_top at the head to w_bot at the foot
-module fan_flight(top, heading, landing, run, w_top, w_bot, rise, steps) {
+module fan_flight(top, heading, landing, pad, run, w_top, w_bot, rise, steps, land_step, land_len) {
     translate([mm(top[0]), mm(top[1]), 0])
         rotate([0, 0, heading])
             translate([-mm(landing), 0, 0])
                 fan_stairs(total_height   = mm(rise),
-                           top_len        = mm(landing),
+                           top_len        = mm(landing + pad),
                            run            = mm(run),
                            width_top      = mm(w_top),
                            width_bot      = mm(w_bot),
                            num_steps      = steps,
+                           landing_step   = land_step,
+                           landing_len    = mm(land_len),
                            rail_height    = mm(parapet_h),
                            rail_thickness = mm(parapet_t));
 }
@@ -329,4 +336,5 @@ echo(front_slope = atan(front_rise / front_run), front_steps = front_steps);
 echo(tower_reach_on_BC = tower_reach, free_BC = bc_len - tower_reach);
 echo(free_CD = upper_side - front_foot - apex_foot, apex_landing = apex_landing);
 exit_end = tower_pos + (tower_side / 2 + exit_n * exit_tread) * dir(back_heading + 180);
-echo(exit_steps = exit_n, exit_end_at = exit_end, relief_half_width = relief_w / 2);
+echo(exit_steps = exit_n, exit_end_at = exit_end, relief_half_width = relief_w / 2, relief_center_y = relief_cy - y0);
+echo(apex_width_bot = apex_width_bot, apex_riser = front_rise / front_steps, apex_tread = (apex_run - apex_land_len) / (front_steps - 1));
