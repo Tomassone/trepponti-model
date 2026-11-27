@@ -10,8 +10,10 @@ The model recreates the bridge's distinctive five-sided structure, arches, stair
 - Bridge body with a five-sided footprint.
 - Five arches representing the bridge's characteristic structure.
 - Mirrored staircases with individual steps and side parapets.
+- Fan-shaped staircase module with widening steps.
 - Central tower with an opening and pyramidal roof.
-- Raised platform and perimeter parapets.
+- Raised platform and perimeter parapets. 
+- Stepped, seven-sided decorative relief.
 - Dimensions based on measurements taken from Google Earth.
 - Designed at **1:200 scale**.
 
@@ -19,10 +21,13 @@ The model recreates the bridge's distinctive five-sided structure, arches, stair
 
 ```text
 .
-├── main.scad      # Main model and assembly
-├── body.scad      # Bridge body and arch geometry
-├── stairs.scad    # Staircase geometry and side walls
-└── tower.scad     # Tower and pyramidal roof
+├── main.scad          # Main bridge model and assembly
+├── body.scad          # Bridge body and arch geometry
+├── stairs.scad        # Standard staircase module
+├── fan_stairs.scad    # Widening/fan-shaped staircase module
+├── tower.scad         # Tower and pyramidal roof
+├── pedestal.scad      # Display pedestal / plinth
+└── relief.scad        # Stepped decorative relief
 ```
 
 ## Requirements
