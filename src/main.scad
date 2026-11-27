@@ -2,6 +2,9 @@ use <body.scad>
 use <tower.scad>
 use <stairs.scad>
 use <pillar.scad>
+use <fan_stairs.scad>
+use <relief.scad>
+use <pedestal.scad>
 
 // --- Print scale ---
 model_scale = 200;                          // 1:200
@@ -40,7 +43,8 @@ side_arch      = [4.8, 2.4, 3.2];           // C-D and D-E, on both sides of the
 end_arch       = [4.0, 2.0, 2.5];           // B-C and E-A, the lateral sides (last reference photo)
 
 // Central stair (at the apex D) and the six stone pillars at the heads of the three front stairs
-apex_width     = front_width;               // same width as the other front stairs (the pillar pairs are evenly spaced)
+apex_width     = front_width;               // head of the central stair = same as the other front stairs (pillar pairs evenly spaced)
+apex_width_bot = 6.5;                       // foot of the central stair: in the photos it widens a lot going down, unlike the others
 apex_run       = front_run;
 pillar_w       = 0.65;                      // shaft
 pillar_shaft   = 1.5;                       // shaft height above the platform
@@ -48,6 +52,26 @@ pillar_cap_w   = 0.85;
 pillar_cap_h   = 0.2;
 pillar_dome_h  = 0.5;
 pillar_ball_d  = 0.2;                       // total ~2.4 m: tops out ~2 m above the wall, as in the photos
+
+// Stone relief in the middle of the platform: 7 sides, stepped (aerial and drone photos)
+relief_w       = 8.2;                       // bounding box of the lowest tier
+relief_d       = 5.8;
+relief_y       = 6.6;                       // its center, measured from the A-B side (flat side towards D, as in the drone photo)
+relief_steps   = 3;
+relief_riser   = 0.2;
+relief_tread   = 0.4;
+
+// Passage inside each tower: from the door (deck_height) it climbs to the platform
+exit_riser     = 0.17;                      // target step height (adjusted to fit platform_raise exactly)
+exit_tread     = 0.26;
+exit_width     = 1.1;                       // = the tower slot
+
+// Pedestal (separate file, pedestal.scad). These are model millimetres, not real metres.
+with_pedestal    = true;
+pedestal_margin  = 8;
+pedestal_height  = 6;
+pedestal_chamfer = 1.5;
+part             = "all";                   // "all", "model" or "pedestal": export the pedestal as its own print
 
 platform_top = deck_height + platform_raise;
 
@@ -128,35 +152,67 @@ arch_z = [arch_stretch(main_arch), arch_stretch(side_arch), arch_stretch(side_ar
           arch_stretch(end_arch),  arch_stretch(end_arch)];
 
 // --- Assembly ---
-body(d1 = mm(d1), d2 = mm(d2), bh1 = mm(bh1), bh2 = mm(bh2), h = mm(platform_top),
-     cut_r = arch_r, cut_centers = arch_centers, cut_z_scale = arch_z, $fa = fa, $fs = fs);
+if (part != "pedestal") model();
+if (part != "model" && with_pedestal)
+    pedestal(points = footprint_points, margin = pedestal_margin, height = pedestal_height,
+             chamfer = pedestal_chamfer, z_top = 0.02);
 
-// Same border as the stairs, all around the platform, open where a stair or tower joins
-body_rim(d1 = mm(d1), d2 = mm(d2), bh1 = mm(bh1), bh2 = mm(bh2),
-         z = mm(platform_top), rim_h = mm(parapet_h), rim_t = mm(parapet_t)) {
-    mirrored() {
-        flight_gap(front_top, front_heading, front_landing, front_width);
-        tower_gap();
-    }
-    flight_gap(apex_top, apex_heading, apex_landing, apex_width);
-}
-
-difference() {
-    union() {
-        mirrored() {
-            flight(back_top,  back_heading,  back_landing,  back_run,  back_width,  back_rise,  back_steps);
-            flight(front_top, front_heading, front_landing, front_run, front_width, front_rise, front_steps);
+module model() {
+    // Body + stepped relief, with the passages from the towers carved out of them
+    difference() {
+        union() {
+            body(d1 = mm(d1), d2 = mm(d2), bh1 = mm(bh1), bh2 = mm(bh2), h = mm(platform_top),
+                 cut_r = arch_r, cut_centers = arch_centers, cut_z_scale = arch_z, $fa = fa, $fs = fs);
+            translate([0, mm(y0 + relief_y), mm(platform_top) - 0.05])
+                mirror([0, 1, 0])               // flat side towards D, the vertex towards A-B
+                relief(width = mm(relief_w), depth = mm(relief_d), steps = relief_steps,
+                       riser = mm(relief_riser), tread = mm(relief_tread));
         }
-        flight(apex_top, apex_heading, apex_landing, apex_run, apex_width, front_rise, front_steps);
+        mirrored() tower_exit_cut();
     }
-    body_cuts(arch_r, arch_centers, arch_z, $fa = fa, $fs = fs);    // keep the vault clear
+
+    // Same border as the stairs, all around the platform, open where a stair or tower joins
+    body_rim(d1 = mm(d1), d2 = mm(d2), bh1 = mm(bh1), bh2 = mm(bh2),
+             z = mm(platform_top), rim_h = mm(parapet_h), rim_t = mm(parapet_t)) {
+        mirrored() {
+            flight_gap(front_top, front_heading, front_landing, front_width);
+            tower_gap();
+        }
+        flight_gap(apex_top, apex_heading, apex_landing, apex_width);
+    }
+
+    difference() {
+        union() {
+            mirrored() {
+                flight(back_top,  back_heading,  back_landing,  back_run,  back_width,  back_rise,  back_steps);
+                flight(front_top, front_heading, front_landing, front_run, front_width, front_rise, front_steps);
+            }
+            fan_flight(apex_top, apex_heading, apex_landing, apex_run, apex_width, apex_width_bot, front_rise, front_steps);
+        }
+        body_cuts(arch_r, arch_centers, arch_z, $fa = fa, $fs = fs);    // keep the vault clear
+    }
+
+    mirrored() back_tower();
+
+    // Pillars: a pair at the head of each front stair, on the outer edges
+    mirrored() stair_pillars(front_top, front_heading, front_width);
+    stair_pillars(apex_top, apex_heading, apex_width);
 }
 
-mirrored() back_tower();
-
-// Pillars: a pair at the head of each front stair, on the outer edges
-mirrored() stair_pillars(front_top, front_heading, front_width);
-stair_pillars(apex_top, apex_heading, apex_width);
+// Points the pedestal has to cover: both sides of every flight and the corners of the body
+function flight_pts(top, heading, landing, run, w0, w1) =
+    let (a = dir(heading), n = dir(heading + 90))
+    [top - landing * a + w0 / 2 * n, top - landing * a - w0 / 2 * n,
+     top + run * a + w1 / 2 * n,     top + run * a - w1 / 2 * n];
+function mm2(p) = [mm(p[0]), mm(p[1])];
+right_pts = concat(flight_pts(back_top,  back_heading,  back_landing,  back_run,  back_width,  back_width),
+                   flight_pts(front_top, front_heading, front_landing, front_run, front_width, front_width),
+                   [B, C]);
+footprint_points = concat(
+    [for (p = right_pts) mm2(p)],
+    [for (p = right_pts) mm2([-p[0], p[1]])],
+    [for (p = flight_pts(apex_top, apex_heading, apex_landing, apex_run, apex_width, apex_width_bot)) mm2(p)],
+    [mm2(D)]);
 
 // A part plus its mirror twin across the YZ plane
 module mirrored() {
@@ -177,6 +233,41 @@ module flight(top, heading, landing, run, width, rise, steps) {
                        rail_height    = mm(parapet_h),
                        rail_thickness = mm(parapet_t),
                        landing_rail   = false);
+}
+
+// Same as flight(), but widening from w_top at the head to w_bot at the foot
+module fan_flight(top, heading, landing, run, w_top, w_bot, rise, steps) {
+    translate([mm(top[0]), mm(top[1]), 0])
+        rotate([0, 0, heading])
+            translate([-mm(landing), 0, 0])
+                fan_stairs(total_height   = mm(rise),
+                           top_len        = mm(landing),
+                           run            = mm(run),
+                           width_top      = mm(w_top),
+                           width_bot      = mm(w_bot),
+                           num_steps      = steps,
+                           rail_height    = mm(parapet_h),
+                           rail_thickness = mm(parapet_t));
+}
+
+// The passage through a tower goes on inside the body: flat at the door level through the tower,
+// then a short stair climbing to the platform. Subtracted from the body (the tower keeps its own slot).
+exit_n = max(1, round(platform_raise / exit_riser));    // (platform_raise = 0 gives a flat passage)
+module tower_exit_cut() {
+    r  = platform_raise / exit_n;                       // exact step height
+    ya = -tower_side / 2 - 0.3;                        // starts just outside the front face of the tower
+    yb = tower_side / 2;                                // inner face of the tower
+    z0 = deck_height;
+    pts = concat(
+        [[ya, z0], [yb, z0]],
+        [for (i = [1 : exit_n]) each [[yb + (i - 1) * exit_tread, z0 + i * r],
+                                      [yb + i * exit_tread,       z0 + i * r]]],
+        [[yb + exit_n * exit_tread, platform_top + 1], [ya, platform_top + 1]]);
+    translate([mm(tower_pos[0]), mm(tower_pos[1]), 0])
+        rotate([0, 0, back_heading + 90])
+            rotate([90, 0, 90])
+                linear_extrude(height = mm(exit_width), center = true)
+                    polygon([for (p = pts) [mm(p[0]), mm(p[1])]]);
 }
 
 // Opening in the platform border where a flight joins (as wide as the flight)
@@ -237,3 +328,5 @@ echo(back_slope  = atan(back_rise / back_run),   back_steps  = back_steps);
 echo(front_slope = atan(front_rise / front_run), front_steps = front_steps);
 echo(tower_reach_on_BC = tower_reach, free_BC = bc_len - tower_reach);
 echo(free_CD = upper_side - front_foot - apex_foot, apex_landing = apex_landing);
+exit_end = tower_pos + (tower_side / 2 + exit_n * exit_tread) * dir(back_heading + 180);
+echo(exit_steps = exit_n, exit_end_at = exit_end, relief_half_width = relief_w / 2);
