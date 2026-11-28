@@ -28,8 +28,12 @@ corner_width   = 18.62;                     // E-C, sets the pentagon shape (bel
 back_splay     = 20;                        // back stair: outward angle from the main axis (survey plan: 20)
 front_fan      = 15;                        // front stairs C and E: outward angle from the main axis (survey plan: 13-15)
 deck_height    = 4.0;                       // top of the back stairs = tower door sill
-platform_raise = 1.9;                       // platform top above deck_height (front photo: wall top is ~2.3 m above the
-                                            //   door sill, parapet included). 0 = flat deck like before
+floor_raise    = 0.6;                       // platform floor above the tower door sill: the interior is dug down to here, so
+                                            //   the tower doors show from inside too (0 = floor exactly at the sill)
+wall_top_ab    = 6.35;                      // top of the tall wall along A-B (front photo), above the water
+wall_t_ab      = 1.0;                       // its thickness
+wall_h_side    = 1.0;                       // the other sides have a low wall / parapet, above the floor
+wall_t_side    = 0.5;
 stair_riser    = 0.15;                      // step height, sets the number of steps
 parapet_h      = 0.45;                      // border of the stairs AND of the platform
 parapet_t      = 0.30;
@@ -37,9 +41,9 @@ tower_side     = 4.0;                       // = back_width, the tower is as wid
 tower_total    = 8.3;                       // above the door sill, roof included
 tower_roof     = 0.85;
 // All the arches are semicircular (opening width, crown height = width / 2, vault radius):
-main_arch      = [7.6, 3.8, 4.4];           // A-B, over the main canal
+main_arch      = [7.6, 3.8, 3.9];           // A-B, over the main canal
 side_arch      = [4.8, 2.4, 3.2];           // C-D and D-E, on both sides of the central stair
-end_arch       = [4.0, 2.0, 2.5];           // B-C and E-A, the lateral sides (last reference photo)
+end_arch       = [4.8, 2.7, 2.9];           // B-C and E-A, the lateral sides: bigger, a bit taller than a semicircle (lateral photo)
 
 // Central stair (at the apex D) and the six stone pillars at the heads of the three front stairs
 apex_width     = front_width;               // head of the central stair = same as the other front stairs (pillar pairs evenly spaced)
@@ -49,23 +53,28 @@ apex_run       = 13.8;                      // steps of the two flights + the ex
 apex_land_len  = 2.0;                       // the extended step (a long tread / landing) in the middle of the stair
 apex_width_bot = apex_width + 2 * apex_run * tan(apex_flare);
 pillar_w       = 0.65;                      // shaft
-pillar_shaft   = 1.5;                       // shaft height above the platform
+pillar_shaft   = 2.75;                      // shaft height above the floor: tops out at ~8.25 m above the water, as in the front photo
 pillar_cap_w   = 0.85;
 pillar_cap_h   = 0.2;
 pillar_dome_h  = 0.5;
 pillar_ball_d  = 0.2;                       // total ~2.4 m: tops out ~2 m above the wall, as in the photos
 
 // Stone relief in the middle of the platform: 7 sides, stepped (aerial and drone photos)
-relief_w       = 8.8;                       // bounding box of the lowest tier (survey plan: ~9 x 8.6, almost a regular heptagon)
-relief_d       = 8.6;
-relief_gap     = 1.9;                       // from the apex D to its flat side; the opposite vertex ends up near the A-B wall
+// Lowest tier, measured from the apex D along the axis: 3 sides towards the stairs (flat side + 2 diagonals),
+// 2 lateral sides parallel to the axis, 2 sides towards the towers meeting at a vertex.
+relief_gap     = 1.9;                       // D to the flat side
+relief_flat    = 5.2;                       // length of the flat side
+relief_w       = 9.2;                       // full width (survey plan: ~9)
+relief_diag    = 2.7;                       // depth of the two diagonals
+relief_lat     = 3.0;                       // length of the lateral sides
+relief_tip     = 2.5;                       // depth of the two sides towards the towers
 relief_steps   = 3;
-relief_riser   = 0.2;
-relief_tread   = 0.4;
+relief_riser   = 0.25;
+relief_tread   = 0.5;
 
 // Passage inside each tower: from the door (deck_height) it climbs to the platform
-exit_riser     = 0.17;                      // target step height (adjusted to fit platform_raise exactly)
-exit_tread     = 0.18;
+exit_riser     = 0.15;                      // target step height (adjusted to fit floor_raise exactly)
+exit_tread     = 0.30;
 exit_width     = 1.1;                       // = the tower slot
 
 // Pedestal (separate file, pedestal.scad). These are model millimetres, not real metres.
@@ -75,7 +84,12 @@ pedestal_height  = 6;
 pedestal_chamfer = 1.5;
 part             = "all";                   // "all", "model" or "pedestal": export the pedestal as its own print
 
-platform_top = deck_height + platform_raise;
+// Central chamber under the platform, where the five vaults meet (height of its crown = vault_peak)
+vault_y        = 5.2;                       // its center, measured from the A-B side
+vault_r        = 4.0;
+vault_peak     = 3.8;
+
+platform_top = deck_height + floor_raise;      // = the floor of the platform, the heads of the front stairs and the base of the pillars
 
 // --- Pentagon, solved from the side lengths (parameters of body()) ---
 assert(corner_width < 2 * upper_side, "corner_width must be smaller than 2 * upper_side");
@@ -90,7 +104,10 @@ B  = [long_side / 2, y0];
 C  = [d1, y0 + bh1];
 D  = [0, y0 + bh1 + bh2];
 
-relief_cy = D[1] - relief_gap - relief_d / 2;       // center of the relief
+function relief_outline() =
+    let (yD = D[1], u1 = relief_gap, u2 = u1 + relief_diag, u3 = u2 + relief_lat, u4 = u3 + relief_tip,
+         f = relief_flat / 2, w = relief_w / 2)
+    [[f, yD - u1], [w, yD - u2], [w, yD - u3], [0, yD - u4], [-w, yD - u3], [-w, yD - u2], [-f, yD - u1]];
 
 // --- Stair directions ---
 function dir(a) = [cos(a), sin(a)];
@@ -141,8 +158,8 @@ bc_len   = norm(C - B);
 tower_reach = max([for (sa = [-1, 1], sb = [-1, 1])
     (tower_pos - B + sa * tower_side / 2 * dir(back_heading)
                    + sb * tower_side / 2 * dir(back_heading + 90)) * dir(bc_angle)]);
-assert(end_arch[0] < bc_len - tower_reach, "end_arch is too wide for the free part of B-C");
-bc_mid    = B + (tower_reach + bc_len) / 2 * dir(bc_angle);
+assert(end_arch[0] < bc_len - 1, "end_arch is too wide for B-C");
+bc_mid    = B + bc_len / 2 * dir(bc_angle);                 // centered on the whole side, the tower stands on top of its end
 bc_center = bc_mid + arch_inset(end_arch) * dir(bc_angle + 90);
 
 // Right-hand arches, then their mirror twins; the main one is on the axis
@@ -150,10 +167,11 @@ arch_centers = [[0, mm(y0 + arch_inset(main_arch)), 0],
                 [ mm(cd_center[0]), mm(cd_center[1]), 0],
                 [-mm(cd_center[0]), mm(cd_center[1]), 0],
                 [ mm(bc_center[0]), mm(bc_center[1]), 0],
-                [-mm(bc_center[0]), mm(bc_center[1]), 0]];
-arch_r = [mm(main_arch[2]), mm(side_arch[2]), mm(side_arch[2]), mm(end_arch[2]), mm(end_arch[2])];
+                [-mm(bc_center[0]), mm(bc_center[1]), 0],
+                [0, mm(y0 + vault_y), 0]];                    // central chamber where the five vaults meet
+arch_r = [mm(main_arch[2]), mm(side_arch[2]), mm(side_arch[2]), mm(end_arch[2]), mm(end_arch[2]), mm(vault_r)];
 arch_z = [arch_stretch(main_arch), arch_stretch(side_arch), arch_stretch(side_arch),
-          arch_stretch(end_arch),  arch_stretch(end_arch)];
+          arch_stretch(end_arch),  arch_stretch(end_arch),  vault_peak / vault_r];
 
 // --- Assembly ---
 if (part != "pedestal") model();
@@ -167,9 +185,8 @@ module model() {
         union() {
             body(d1 = mm(d1), d2 = mm(d2), bh1 = mm(bh1), bh2 = mm(bh2), h = mm(platform_top),
                  cut_r = arch_r, cut_centers = arch_centers, cut_z_scale = arch_z, $fa = fa, $fs = fs);
-            translate([0, mm(relief_cy), mm(platform_top) - 0.05])
-                mirror([0, 1, 0])               // flat side towards D, the vertex towards A-B
-                relief(width = mm(relief_w), depth = mm(relief_d), steps = relief_steps,
+            translate([0, 0, mm(platform_top) - 0.05])
+                relief(points = [for (p = relief_outline()) mm2(p)], steps = relief_steps,
                        riser = mm(relief_riser), tread = mm(relief_tread));
         }
         mirrored() tower_exit_cut();
@@ -177,12 +194,19 @@ module model() {
 
     // Same border as the stairs, all around the platform, open where a stair or tower joins
     body_rim(d1 = mm(d1), d2 = mm(d2), bh1 = mm(bh1), bh2 = mm(bh2),
-             z = mm(platform_top), rim_h = mm(parapet_h), rim_t = mm(parapet_t)) {
+             z = mm(platform_top), rim_h = mm(wall_h_side), rim_t = mm(wall_t_side)) {
         mirrored() {
             flight_gap(front_top, front_heading, front_landing, front_width);
             tower_gap();
         }
         flight_gap(apex_top, apex_heading, apex_landing, apex_width);
+    }
+
+    // Tall wall along A-B, between the towers
+    difference() {
+        translate([-mm(B[0]), mm(y0), mm(platform_top) - 0.05])
+            cube([2 * mm(B[0]), mm(wall_t_ab), mm(wall_top_ab - platform_top) + 0.05]);
+        mirrored() tower_gap();
     }
 
     difference() {
@@ -259,9 +283,9 @@ module fan_flight(top, heading, landing, pad, run, w_top, w_bot, rise, steps, la
 
 // The passage through a tower goes on inside the body: flat at the door level through the tower,
 // then a short stair climbing to the platform. Subtracted from the body (the tower keeps its own slot).
-exit_n = max(1, round(platform_raise / exit_riser));    // (platform_raise = 0 gives a flat passage)
+exit_n = max(1, round(floor_raise / exit_riser));          // (floor_raise = 0 gives a flat passage)
 module tower_exit_cut() {
-    r  = platform_raise / exit_n;                       // exact step height
+    r  = floor_raise / exit_n;                          // exact step height
     ya = -tower_side / 2 - 0.3;                        // starts just outside the front face of the tower
     yb = tower_side / 2;                                // inner face of the tower
     z0 = deck_height;
@@ -336,5 +360,5 @@ echo(front_slope = atan(front_rise / front_run), front_steps = front_steps);
 echo(tower_reach_on_BC = tower_reach, free_BC = bc_len - tower_reach);
 echo(free_CD = upper_side - front_foot - apex_foot, apex_landing = apex_landing);
 exit_end = tower_pos + (tower_side / 2 + exit_n * exit_tread) * dir(back_heading + 180);
-echo(exit_steps = exit_n, exit_end_at = exit_end, relief_half_width = relief_w / 2, relief_center_y = relief_cy - y0);
+echo(exit_steps = exit_n, exit_end_at = exit_end, relief_half_width = relief_w / 2);
 echo(apex_width_bot = apex_width_bot, apex_riser = front_rise / front_steps, apex_tread = (apex_run - apex_land_len) / (front_steps - 1));
